@@ -1,0 +1,216 @@
+{
+  "events": [
+    {
+      "timestamp": "2026-11-07T15:00:00Z",
+      "hostname": "vm1",
+      "event_type": "ssh_failed",
+      "severity": "medium",
+      "source_ip": "192.168.1.20",
+      "event_id": "evt-001",
+      "event_details": {
+        "username": "admin",
+        "source_port": 51234,
+        "authentication_method": "password"
+      }
+    },
+    {
+      "timestamp": "2026-11-07T15:00:03Z",
+      "hostname": "vm1",
+      "event_type": "ssh_failed",
+      "severity": "medium",
+      "source_ip": "192.168.1.20",
+      "event_id": "evt-002",
+      "event_details": {
+        "username": "root",
+        "source_port": 51235,
+        "invalid_user": false,
+        "raw_message": "Failed password for root from 192.168.1.20 port 51235 ssh2"
+      }
+    },
+    {
+      "event_id": "evt-003",
+      "timestamp": "2026-11-07T15:00:08Z",
+      "hostname": "vm2",
+      "event_type": "ssh_success",
+      "severity": "info",
+      "source_ip": "192.168.1.21",
+      "event_details": {
+        "username": "alice",
+        "authentication_method": "publickey",
+        "source_port": 52001
+      }
+    },
+    {
+      "event_id": "evt-004",
+      "timestamp": "2026-11-07T15:01:00Z",
+      "hostname": "vm1",
+      "event_type": "ssh_brute_force_alert",
+      "severity": "high",
+      "source_ip": "192.168.1.20",
+      "event_details": {
+        "target_usernames": [
+          "admin",
+          "root"
+        ],
+        "failed_attempts": 12,
+        "window_seconds": 60,
+        "threshold": 5,
+        "detection_rule": "SSH_FAIL_RATE"
+      }
+    },
+    {
+      "event_id": "evt-005",
+      "timestamp": "2026-11-07T15:02:00Z",
+      "hostname": "vm2",
+      "event_type": "port_scan_alert",
+      "severity": "high",
+      "source_ip": "192.168.1.55",
+      "event_details": {
+        "destination_ip": "192.168.1.12",
+        "protocol": "TCP",
+        "ports_scanned": [
+          21,
+          22,
+          80,
+          443,
+          8080
+        ],
+        "unique_port_count": 5,
+        "scan_duration_seconds": 9.4,
+        "tcp_flags": {
+          "syn": true,
+          "ack": false
+        }
+      }
+    },
+    {
+      "event_id": "evt-006",
+      "timestamp": "2026-11-07T15:03:00Z",
+      "hostname": "vm1",
+      "event_type": "sudo_command",
+      "severity": "medium",
+      "source_ip": null,
+      "event_details": {
+        "username": "bob",
+        "command": "sudo systemctl restart ssh",
+        "target_user": "root",
+        "success": true,
+        "tty": "pts/0"
+      }
+    },
+    {
+      "event_id": "evt-007",
+      "timestamp": "2026-11-07T15:04:00Z",
+      "hostname": "vm2",
+      "event_type": "file_modified",
+      "severity": "high",
+      "event_details": {
+        "path": "/etc/ssh/sshd_config",
+        "process": "nano",
+        "pid": 2234,
+        "old_hash": null,
+        "new_hash": "sha256:example-not-real",
+        "permissions": {
+          "mode": "0644",
+          "owner": "root"
+        }
+      }
+    },
+    {
+      "event_id": "evt-008",
+      "timestamp": "2026-11-07T15:05:00Z",
+      "hostname": "vm1",
+      "event_type": "process_started",
+      "severity": "low",
+      "source_ip": null,
+      "event_details": {
+        "process_name": "curl",
+        "pid": 4451,
+        "parent_pid": 4400,
+        "command_line": "curl https://example.invalid/test",
+        "arguments": [
+          "-I",
+          "https://example.invalid/test"
+        ],
+        "environment": {
+          "USER": "analyst"
+        }
+      }
+    },
+    {
+      "event_id": "evt-009",
+      "timestamp": "2026-11-07T15:06:00Z",
+      "hostname": "vm2",
+      "event_type": "firewall_denied",
+      "severity": "medium",
+      "source_ip": "192.168.1.88",
+      "event_details": {
+        "destination_ip": "192.168.1.12",
+        "destination_port": 22,
+        "protocol": "TCP",
+        "interface": "ens33",
+        "packet_bytes": 60,
+        "action": "DROP"
+      }
+    },
+    {
+      "event_id": "evt-010",
+      "timestamp": "2026-11-07T15:07:00Z",
+      "hostname": "vm1",
+      "event_type": "custom_unknown_event",
+      "severity": "unknown",
+      "event_details": {
+        "brand_new_field": "unrecognized-but-valid",
+        "extra_number": 42,
+        "extra_boolean": false,
+        "nested": {
+          "a": 1,
+          "b": [
+            1,
+            2,
+            3
+          ]
+        },
+        "empty_list": []
+      }
+    },
+    {
+      "event_id": "evt-011",
+      "timestamp": "2026-11-07T15:08:00Z",
+      "hostname": "vm2",
+      "event_type": "heartbeat",
+      "severity": "info",
+      "event_details": {}
+    },
+    {
+      "event_id": "evt-012",
+      "timestamp": "2026-11-07T15:09:00Z",
+      "hostname": "vm1",
+      "event_type": "dns_query",
+      "severity": "low",
+      "source_ip": "192.168.1.11",
+      "event_details": {
+        "query_name": "example.org",
+        "query_type": "A",
+        "response_code": "NOERROR",
+        "answers": [
+          "93.184.215.14"
+        ],
+        "latency_ms": 12.5,
+        "resolver": "192.168.1.1",
+        "transport": "UDP",
+        "query_id": 1234,
+        "cached": false,
+        "tags": [
+          "dns",
+          "network"
+        ],
+        "metadata": {
+          "sensor": "vm1",
+          "interface": "eth0"
+        },
+        "note": null
+      }
+    }
+  ]
+}
