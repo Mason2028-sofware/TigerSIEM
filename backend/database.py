@@ -51,13 +51,15 @@ def get_events(limit: int = 100):
         raise ValueError("limit must be between 1 and 1000")
 
     query = text("""
-        SELECT
-            tag,
-            time,
-            data
-        FROM public.tiger_raw_events_v2
-        ORDER BY time DESC
-        LIMIT :limit
+    SELECT
+        tag,
+        time,
+        data
+    FROM public.tiger_raw_events_v2
+    WHERE tag NOT LIKE 'simulation.%'
+    ORDER BY time DESC
+    LIMIT :limit
+    
     """)
 
     with engine.connect() as connection:
@@ -111,19 +113,20 @@ def get_ssh_events(limit: int = 100):
 # Calculate basic security statistics
 def get_stats():
     query = text("""
-        SELECT
-            COUNT(*) AS total_events,
-            COUNT(*) FILTER (
-                WHERE
-                    data->>'MESSAGE' ILIKE '%failed password%'
-                    OR data->>'MESSAGE' ILIKE '%authentication failure%'
-                    OR data->>'MESSAGE' ILIKE '%password check failed%'
-            ) AS failed_auth_events,
-            COUNT(*) FILTER (
-                WHERE tag = 'target.ssh'
-            ) AS ssh_events,
-            MAX(time) AS latest_event
-        FROM public.tiger_raw_events_v2
+    SELECT
+        COUNT(*) AS total_events,
+        COUNT(*) FILTER (
+            WHERE
+                data->>'MESSAGE' ILIKE '%failed password%'
+                OR data->>'MESSAGE' ILIKE '%authentication failure%'
+                OR data->>'MESSAGE' ILIKE '%password check failed%'
+        ) AS failed_auth_events,
+        COUNT(*) FILTER (
+            WHERE tag = 'target.ssh'
+        ) AS ssh_events,
+        MAX(time) AS latest_event
+    FROM public.tiger_raw_events_v2
+    WHERE tag NOT LIKE 'simulation.%'
     """)
 
     with engine.connect() as connection:
@@ -138,3 +141,29 @@ def get_stats():
                 if row.latest_event else None
             ),
         }
+
+def get_historical_stats():
+    query = text("""
+        SELECT
+            time_bucket('1 day', time) AS day,
+            COUNT(*) AS total_events,
+            COUNT(*) FILTER (
+                WHERE data->>'MESSAGE' ILIKE '%failed password%'
+            ) AS failed_logins
+        FROM public.tiger_raw_events_v2
+        WHERE tag = 'simulation.ssh'
+        GROUP BY day
+        ORDER BY day DESC
+    """)
+
+    with engine.connect() as connection:
+        rows = connection.execute(query).all()
+
+        return [
+            {
+                "day": row.day.isoformat(),
+                "total_events": row.total_events,
+                "failed_logins": row.failed_logins
+            }
+            for row in rows
+        ]
