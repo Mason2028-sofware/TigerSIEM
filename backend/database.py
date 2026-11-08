@@ -6,6 +6,10 @@ from sqlalchemy import create_engine, text
 
 #Ran this in terminal to recognize modules: python -m pip install sqlalchemy python-dotenv psycopg2-binary fastapi uvicorn
 
+from datetime import date, datetime, time, timedelta
+from time import perf_counter
+from statistics import median
+
 # Load environment variables from backend/.env
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
@@ -32,6 +36,19 @@ engine = create_engine(
     pool_pre_ping=True,
 )
 
+def date_bounds(start_date: date | None, end_date: date | None):
+    if start_date and end_date and start_date > end_date:
+        raise ValueError("start_date cannot be after end_date")
+
+    start = datetime.combine(start_date, time.min) if start_date else None
+
+    end = (
+        datetime.combine(end_date + timedelta(days=1), time.min)
+        if end_date else None
+    )
+
+    return start, end
+
 
 # Test whether TigerData is reachable
 def get_data():
@@ -46,33 +63,41 @@ def get_data():
 
 
 # Retrieve the latest SIEM events
-def get_events(limit: int = 100):
+def get_events(
+    limit: int = 100,
+    start_date: date | None = None,
+    end_date: date | None = None,
+):
     if not 1 <= limit <= 1000:
         raise ValueError("limit must be between 1 and 1000")
 
+    start, end = date_bounds(start_date, end_date)
+
     query = text("""
-    SELECT
-        tag,
-        time,
-        data
-    FROM public.tiger_raw_events_v2
-    WHERE tag NOT LIKE 'simulation.%'
-    ORDER BY time DESC
-    LIMIT :limit
-    
+        SELECT tag, time, data
+        FROM public.tiger_raw_events_v2
+        WHERE tag NOT LIKE 'simulation.%'
+          AND (:start_time IS NULL OR time >= :start_time)
+          AND (:end_time IS NULL OR time < :end_time)
+        ORDER BY time DESC
+        LIMIT :limit
     """)
 
     with engine.connect() as connection:
-        rows = connection.execute(query, {"limit": limit})
+        rows = connection.execute(query, {
+            "limit": limit,
+            "start_time": start,
+            "end_time": end,
+        }).all()
 
-        return [
-            {
-                "tag": row.tag,
-                "time": row.time.isoformat(),
-                "data": row.data,
-            }
-            for row in rows
-        ]
+    return [
+        {
+            "tag": row.tag,
+            "time": row.time.isoformat(),
+            "data": row.data,
+        }
+        for row in rows
+    ]
 
 
 # Retrieve simplified SSH events
@@ -142,7 +167,12 @@ def get_stats():
             ),
         }
 
-def get_historical_stats():
+def get_historical_stats(
+    start_date: date | None = None,
+    end_date: date | None = None,
+):
+    start, end = date_bounds(start_date, end_date)
+
     query = text("""
         SELECT
             time_bucket('1 day', time) AS day,
@@ -152,18 +182,76 @@ def get_historical_stats():
             ) AS failed_logins
         FROM public.tiger_raw_events_v2
         WHERE tag = 'simulation.ssh'
+          AND (:start_time IS NULL OR time >= :start_time)
+          AND (:end_time IS NULL OR time < :end_time)
         GROUP BY day
         ORDER BY day DESC
     """)
 
     with engine.connect() as connection:
-        rows = connection.execute(query).all()
+        rows = connection.execute(query, {
+            "start_time": start,
+            "end_time": end,
+        }).all()
 
-        return [
-            {
-                "day": row.day.isoformat(),
-                "total_events": row.total_events,
-                "failed_logins": row.failed_logins
-            }
-            for row in rows
-        ]
+    return [
+        {
+            "day": row.day.isoformat(),
+            "total_events": row.total_events,
+            "failed_logins": row.failed_logins,
+        }
+        for row in rows
+    ]
+def benchmark_historical(
+    start_date: date | None = None,
+    end_date: date | None = None,
+):
+    start, end = date_bounds(start_date, end_date)
+
+    query = text("""
+        SELECT
+            time_bucket('1 day', time) AS day,
+            COUNT(*) AS total_events,
+            COUNT(*) FILTER (
+                WHERE data->>'MESSAGE' ILIKE '%failed password%'
+            ) AS failed_logins
+        FROM public.tiger_raw_events_v2
+        WHERE tag = 'simulation.ssh'
+          AND (:start_time IS NULL OR time >= :start_time)
+          AND (:end_time IS NULL OR time < :end_time)
+        GROUP BY day
+        ORDER BY day DESC
+    """)
+
+    params = {
+        "start_time": start,
+        "end_time": end,
+    }
+
+    timings = []
+    days_returned = 0
+
+    with engine.connect() as connection:
+        # Warm-up query, excluded from measurements
+        connection.execute(query, params).all()
+
+        for _ in range(3):
+            started = perf_counter()
+
+            rows = connection.execute(query, params).all()
+
+            elapsed_ms = (perf_counter() - started) * 1000
+
+            timings.append(round(elapsed_ms, 3))
+            days_returned = len(rows)
+
+    return {
+        "benchmark": "historical_daily_aggregation",
+        "storage": "Hypercore-enabled hypertable",
+        "runs": 3,
+        "execution_times_ms": timings,
+        "median_time_ms": round(median(timings), 3),
+        "days_returned": days_returned,
+        "start_date": start_date.isoformat() if start_date else None,
+        "end_date": end_date.isoformat() if end_date else None,
+    }
