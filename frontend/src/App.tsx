@@ -81,7 +81,7 @@ export default function App() {
     <div className="app">
       <header className="top">
         <div>
-          <h1>Security event monitor</h1>
+          <h1>TigerSIEM Event Monitor</h1>
           <p className="sub">
             {isLive ? "Current data from TigerData" : "Past data from TigerData"}
             {updated && ` · last update ${fmtTime(updated.toISOString())}`}
@@ -132,10 +132,10 @@ export default function App() {
       <section className="stats">
         {isLive ? (
           <>
-            <Stat label="Total events (all time)" value={live.stats ? live.stats.total_events.toLocaleString() : "–"} />
-            <Stat label="Failed logins (all time)" value={live.stats ? live.stats.failed_auth_events.toLocaleString() : "–"} />
-            <Stat label="SSH events (all time)" value={live.stats ? live.stats.ssh_events.toLocaleString() : "–"} />
-            <Stat label="Network alerts (all time)" value={live.stats ? live.stats.network_alerts.toLocaleString() : "–"} />
+            <Stat label="Total events" value={live.stats ? live.stats.total_events.toLocaleString() : "–"} />
+            <Stat label="Failed logins" value={live.stats ? live.stats.failed_auth_events.toLocaleString() : "–"} />
+            <Stat label="SSH events" value={live.stats ? live.stats.ssh_events.toLocaleString() : "–"} />
+            <Stat label="Network alerts" value={live.stats ? live.stats.network_alerts.toLocaleString() : "–"} />
             <Stat label="Latest event" small value={live.stats?.latest_event ? fmtDateTime(live.stats.latest_event) : "–"} />
           </>
         ) : (
