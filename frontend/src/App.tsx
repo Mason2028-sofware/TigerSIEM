@@ -1,3 +1,9 @@
+/*
+  We used ChatGPT to help generate images and designs for what we wanted the 
+  interface to look like. We also used ChatGPT to generate the logo
+  used for the SIEM.
+*/
+
 import { useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { API_URL, LIVE_LIMIT, RANGE_LIMIT, LOGO_SRC } from "./config";
 import type { SiemEvent, DayStat, Mode } from "./types/siem";

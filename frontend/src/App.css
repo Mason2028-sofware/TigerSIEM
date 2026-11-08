@@ -1,3 +1,9 @@
+/*
+  We used ChatGPT to help us write this .css file.
+  ChatGPT was prompted to write a CSS file to help us style our React Frontent in the way we envisioned.
+  We then edited the code to our liking.
+*/
+
 :root{
   --ground:#ffd9a8; --panel:#ffecd2; --field:#fff7ea; --ink:#111111; --muted:#4d3a26;
   --danger:#b3261e; --danger-soft:#ffc7ba; --warn:#c2570c;
