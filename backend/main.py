@@ -1,4 +1,4 @@
-
+#AI assisted in the creation of these functions. Primarily used ChatGPT to create function templates and organization structure.
 from datetime import date
 
 from fastapi import FastAPI, HTTPException, Query
@@ -24,7 +24,7 @@ app = FastAPI(
 )
 
 
-# Allow React frontend to communicate with backend
+#Allow React frontend to communicate with backend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -45,8 +45,7 @@ def validate_dates(start_date: date | None, end_date: date | None):
             detail="start_date cannot be after end_date",
         )
 
-
-# Handle database errors consistently
+#Handle database errors consistently
 def database_error(error):
     print(f"Database error: {error}")
     raise HTTPException(
@@ -54,8 +53,7 @@ def database_error(error):
         detail="Unable to retrieve data from TigerData",
     ) from error
 
-
-# Home / health check
+# health check
 @app.get("/")
 def home():
     return {
@@ -64,7 +62,7 @@ def home():
     }
 
 
-# Test TigerData connectivity
+#Test TigerData connectivity
 @app.get("/api/data")
 def get_database_data():
     try:
@@ -76,8 +74,8 @@ def get_database_data():
         database_error(error)
 
 
-# Retrieve recent security events
-# Optional calendar date filtering
+#Retrieve recent security events
+#Optional calendar date filtering
 @app.get("/api/events")
 def events(
     limit: int = Query(default=100, ge=1, le=1000),
@@ -99,7 +97,7 @@ def events(
         database_error(error)
 
 
-# Retrieve SSH-specific security events
+#Retrieve SSH-specific security events
 @app.get("/api/ssh")
 def ssh_events(
     limit: int = Query(default=100, ge=1, le=1000),
@@ -113,8 +111,8 @@ def ssh_events(
         database_error(error)
 
 
-# Retrieve live security statistics
-# Simulated historical events are excluded in database.py
+#Retrieve live security statistics
+#Simulated historical events are excluded in database.py
 @app.get("/api/stats")
 def stats():
     try:
@@ -127,7 +125,7 @@ def stats():
 
 
 # Retrieve historical security analytics
-# Supports calendar date filtering
+#Supports calendar date filtering
 @app.get("/api/historical-stats")
 def historical_stats(
     start_date: date | None = None,
@@ -148,15 +146,14 @@ def historical_stats(
         database_error(error)
 
 
-# Benchmark historical analytics query performance
-# Measures query and result-fetch time on TigerData
+#Benchmark historical analytics query performance
+#Measures query and result-fetch time on TigerData
 @app.get("/api/benchmark")
 def benchmark(
     start_date: date | None = None,
     end_date: date | None = None,
 ):
     validate_dates(start_date, end_date)
-
     try:
         return {
             "success": True,
