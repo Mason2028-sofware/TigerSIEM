@@ -1,4 +1,4 @@
-
+#AI assisted in the creation of these functions. Primarily used ChatGPT to create function templates and organization structure.
 import os
 
 from dotenv import load_dotenv
@@ -30,7 +30,7 @@ def _normalize_database_url(raw_url: str | None) -> str:
     return url
 
 
-# Create the database engine
+#Create the database engine
 engine = create_engine(
     _normalize_database_url(os.getenv("DATABASE_URL")),
     pool_pre_ping=True,
@@ -50,7 +50,7 @@ def date_bounds(start_date: date | None, end_date: date | None):
     return start, end
 
 
-# Test whether TigerData is reachable
+#Test whether TigerData is reachable
 def get_data():
     query = text("SELECT NOW() AS current_time")
 
@@ -62,7 +62,7 @@ def get_data():
         }
 
 
-# Retrieve the latest SIEM events
+#Retrieve the latest SIEM events
 def get_events(
     limit: int = 100,
     start_date: date | None = None,
@@ -100,7 +100,7 @@ def get_events(
     ]
 
 
-# Retrieve simplified SSH events
+#Retrieve simplified SSH events
 def get_ssh_events(limit: int = 100):
     if not 1 <= limit <= 1000:
         raise ValueError("limit must be between 1 and 1000")
@@ -135,7 +135,7 @@ def get_ssh_events(limit: int = 100):
         ]
 
 
-# Calculate current security statistics (exclude simulated events)
+#Calculate current security statistics (exclude simulated events)
 def get_stats():
     query = text("""
         SELECT
@@ -178,7 +178,7 @@ def get_stats():
     }
 
 
-# Calculate daily historical SSH activity and network alerts
+#Calculate daily historical SSH activity and network alerts
 def get_historical_stats(
     start_date: date | None = None,
     end_date: date | None = None,
@@ -259,7 +259,6 @@ def benchmark_historical(
 
     timings = []
     days_returned = 0
-
     with engine.connect() as connection:
         # Warm-up query, excluded from measurements
         connection.execute(query, params).all()
@@ -285,7 +284,7 @@ def benchmark_historical(
         "end_date": end_date.isoformat() if end_date else None,
     }
 
-# Retrieve Suricata security alerts, including TCP SYN scans
+#Retrieve Suricata security alerts, including TCP SYN scans
 def get_network_alerts(limit: int = 100):
     if not 1 <= limit <= 1000:
         raise ValueError("limit must be between 1 and 1000")
