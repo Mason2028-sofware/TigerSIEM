@@ -1,121 +1,84 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
+import { useEffect, useState } from 'react'
+import api from './services/api'
 import './App.css'
 
+type BackendData = {
+  timestamp?: string | null
+  error?: string
+  database_url_configured?: boolean
+}
+
+type ApiResponse = {
+  success: boolean
+  data: BackendData
+}
+
 function App() {
-  const [count, setCount] = useState(0)
+  const [backendData, setBackendData] = useState<BackendData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      const response = await api.get<ApiResponse>('/api/data')
+      setBackendData(response.data.data)
+      setError('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to connect to the backend.')
+      setBackendData(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void fetchData()
+  }, [])
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+    <main className="dashboard-shell">
+      <section className="dashboard-card">
+        <div className="card-header">
+          <div>
+            <p className="eyebrow">TigerSIEM</p>
+            <h1>Security telemetry dashboard</h1>
+          </div>
+          <button type="button" className="refresh-button" onClick={() => void fetchData()}>
+            {loading ? 'Refreshing…' : 'Refresh'}
+          </button>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+        <div className="status-row">
+          <span className={`status-badge ${error ? 'offline' : 'online'}`}>
+            {error ? 'Backend offline' : 'Backend online'}
+          </span>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
+
+        {error ? (
+          <div className="message error">
+            <strong>Connection issue:</strong> {error}
+          </div>
+        ) : null}
+
+        <div className="metrics-grid">
+          <article className="metric-card">
+            <p className="label">Last database sync</p>
+            <h2>{backendData?.timestamp ? new Date(backendData.timestamp).toLocaleString() : 'Waiting for data'}</h2>
+          </article>
+
+          <article className="metric-card">
+            <p className="label">Connection</p>
+            <h2>{backendData?.database_url_configured ? 'Configured' : 'Not configured'}</h2>
+          </article>
+        </div>
+
+        <div className="raw-panel">
+          <p className="label">Backend payload</p>
+          <pre>{JSON.stringify(backendData ?? { message: 'No data yet' }, null, 2)}</pre>
         </div>
       </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+    </main>
   )
 }
 

@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from database import get_data
 
-app = FastAPI()
+app = FastAPI(title="TigerSIEM Backend")
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,11 +20,13 @@ def home():
 
 @app.get("/api/data")
 def get_database_data():
-    timestamp = get_data()
-
-    # Your application logic goes here
-
     return {
         "success": True,
-        "data": timestamp,
+        "data": get_data(),
     }
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
