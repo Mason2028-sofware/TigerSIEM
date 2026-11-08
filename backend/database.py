@@ -135,38 +135,50 @@ def get_ssh_events(limit: int = 100):
         ]
 
 
-# Calculate basic security statistics
+# Calculate current security statistics (exclude simulated events)
 def get_stats():
     query = text("""
-    SELECT
-        COUNT(*) AS total_events,
-        COUNT(*) FILTER (
-            WHERE
-                data->>'MESSAGE' ILIKE '%failed password%'
-                OR data->>'MESSAGE' ILIKE '%authentication failure%'
-                OR data->>'MESSAGE' ILIKE '%password check failed%'
-        ) AS failed_auth_events,
-        COUNT(*) FILTER (
-            WHERE tag = 'target.ssh'
-        ) AS ssh_events,
-        MAX(time) AS latest_event
-    FROM public.tiger_raw_events_v2
-    WHERE tag NOT LIKE 'simulation.%'
+        SELECT
+            COUNT(*) AS total_events,
+
+            COUNT(*) FILTER (
+                WHERE
+                    data->>'MESSAGE' ILIKE '%failed password%'
+                    OR data->>'MESSAGE' ILIKE '%authentication failure%'
+                    OR data->>'MESSAGE' ILIKE '%password check failed%'
+            ) AS failed_auth_events,
+
+            COUNT(*) FILTER (
+                WHERE tag = 'target.ssh'
+            ) AS ssh_events,
+
+            COUNT(*) FILTER (
+                WHERE tag = 'target.suricata'
+                  AND data->>'event_type' = 'alert'
+            ) AS network_alerts,
+
+            MAX(time) AS latest_event
+
+        FROM public.tiger_raw_events_v2
+        WHERE tag NOT LIKE 'simulation.%'
     """)
 
     with engine.connect() as connection:
         row = connection.execute(query).one()
 
-        return {
-            "total_events": row.total_events,
-            "failed_auth_events": row.failed_auth_events,
-            "ssh_events": row.ssh_events,
-            "latest_event": (
-                row.latest_event.isoformat()
-                if row.latest_event else None
-            ),
-        }
+    return {
+        "total_events": row.total_events,
+        "failed_auth_events": row.failed_auth_events,
+        "ssh_events": row.ssh_events,
+        "network_alerts": row.network_alerts,
+        "latest_event": (
+            row.latest_event.isoformat()
+            if row.latest_event else None
+        ),
+    }
 
+
+# Calculate daily historical SSH activity and network alerts
 def get_historical_stats(
     start_date: date | None = None,
     end_date: date | None = None,
@@ -176,29 +188,46 @@ def get_historical_stats(
     query = text("""
         SELECT
             time_bucket('1 day', time) AS day,
-            COUNT(*) AS total_events,
+
             COUNT(*) FILTER (
-                WHERE data->>'MESSAGE' ILIKE '%failed password%'
-            ) AS failed_logins
+                WHERE tag = 'simulation.ssh'
+            ) AS total_events,
+
+            COUNT(*) FILTER (
+                WHERE tag = 'simulation.ssh'
+                  AND data->>'MESSAGE' ILIKE '%failed password%'
+            ) AS failed_logins,
+
+            COUNT(*) FILTER (
+                WHERE tag = 'target.suricata'
+                  AND data->>'event_type' = 'alert'
+            ) AS network_alerts
+
         FROM public.tiger_raw_events_v2
-        WHERE tag = 'simulation.ssh'
+
+        WHERE tag IN ('simulation.ssh', 'target.suricata')
           AND (:start_time IS NULL OR time >= :start_time)
           AND (:end_time IS NULL OR time < :end_time)
+
         GROUP BY day
         ORDER BY day DESC
     """)
 
     with engine.connect() as connection:
-        rows = connection.execute(query, {
-            "start_time": start,
-            "end_time": end,
-        }).all()
+        rows = connection.execute(
+            query,
+            {
+                "start_time": start,
+                "end_time": end,
+            }
+        ).all()
 
     return [
         {
             "day": row.day.isoformat(),
             "total_events": row.total_events,
             "failed_logins": row.failed_logins,
+            "network_alerts": row.network_alerts,
         }
         for row in rows
     ]
@@ -255,3 +284,40 @@ def benchmark_historical(
         "start_date": start_date.isoformat() if start_date else None,
         "end_date": end_date.isoformat() if end_date else None,
     }
+
+# Retrieve Suricata security alerts, including TCP SYN scans
+def get_network_alerts(limit: int = 100):
+    if not 1 <= limit <= 1000:
+        raise ValueError("limit must be between 1 and 1000")
+
+    query = text("""
+        SELECT
+            time,
+            tag,
+            data->>'src_ip' AS source_ip,
+            data->>'dest_ip' AS destination_ip,
+            data->>'dest_port' AS destination_port,
+            data->'alert'->>'signature' AS alert,
+            data->'alert'->>'severity' AS severity
+        FROM public.tiger_raw_events_v2
+        WHERE tag = 'target.suricata'
+          AND data->>'event_type' = 'alert'
+        ORDER BY time DESC
+        LIMIT :limit
+    """)
+
+    with engine.connect() as connection:
+        rows = connection.execute(query, {"limit": limit}).all()
+
+        return [
+            {
+                "time": row.time.isoformat(),
+                "tag": row.tag,
+                "source_ip": row.source_ip,
+                "destination_ip": row.destination_ip,
+                "destination_port": row.destination_port,
+                "alert": row.alert,
+                "severity": row.severity,
+            }
+            for row in rows
+        ]

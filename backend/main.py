@@ -12,6 +12,7 @@ from database import (
     get_stats,
     get_historical_stats,
     benchmark_historical,
+    get_network_alerts,
 )
 
 
@@ -167,6 +168,18 @@ def benchmark(
     except SQLAlchemyError as error:
         database_error(error)
 
+@app.get("/api/network-alerts")
+def network_alerts_api(limit: int = Query(default=100, ge=1, le=1000)):
+    try:
+        return {
+            "success": True,
+            "data": get_network_alerts(limit),
+        }
+    except SQLAlchemyError:
+        raise HTTPException(
+            status_code=503,
+            detail="Unable to retrieve network security alerts",
+        )
 
 # Start development server
 if __name__ == "__main__":
